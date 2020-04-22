@@ -32,6 +32,8 @@ public class PostModel extends Payload<BaseNetworkError> implements Cloneable, I
     private static final long LATITUDE_REMOVED_VALUE = 8888;
     private static final long LONGITUDE_REMOVED_VALUE = 8888;
 
+    public boolean isReblog = false;
+
     @PrimaryKey
     @Column private int mId;
     @Column private int mLocalSiteId;
