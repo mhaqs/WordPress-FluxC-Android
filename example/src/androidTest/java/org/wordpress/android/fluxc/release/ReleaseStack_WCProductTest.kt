@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThat
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.wordpress.android.fluxc.TestUtils
@@ -14,6 +15,7 @@ import org.wordpress.android.fluxc.action.WCProductAction
 import org.wordpress.android.fluxc.example.BuildConfig
 import org.wordpress.android.fluxc.generated.MediaActionBuilder
 import org.wordpress.android.fluxc.generated.WCProductActionBuilder
+import org.wordpress.android.fluxc.model.WCProductCategoryModel
 import org.wordpress.android.fluxc.model.WCProductImageModel
 import org.wordpress.android.fluxc.model.WCProductModel
 import org.wordpress.android.fluxc.network.rest.wpcom.wc.product.CoreProductStatus
@@ -23,6 +25,7 @@ import org.wordpress.android.fluxc.persistence.ProductSqlUtils
 import org.wordpress.android.fluxc.store.MediaStore
 import org.wordpress.android.fluxc.store.MediaStore.OnMediaListFetched
 import org.wordpress.android.fluxc.store.WCProductStore
+import org.wordpress.android.fluxc.store.WCProductStore.AddProductCategoryPayload
 import org.wordpress.android.fluxc.store.WCProductStore.FetchAllProductCategoriesPayload
 import org.wordpress.android.fluxc.store.WCProductStore.FetchProductPasswordPayload
 import org.wordpress.android.fluxc.store.WCProductStore.FetchProductReviewsPayload
@@ -63,6 +66,7 @@ class ReleaseStack_WCProductTest : ReleaseStack_WCBase() {
         UPDATED_PRODUCT_REVIEW_STATUS,
         UPDATED_PRODUCT_IMAGES,
         UPDATED_PRODUCT_PASSWORD,
+        ADDED_PRODUCT_CATEGORY,
     }
 
     @Inject internal lateinit var productStore: WCProductStore
@@ -519,6 +523,32 @@ class ReleaseStack_WCProductTest : ReleaseStack_WCBase() {
         assertTrue(fetchAllCategories.isNotEmpty())
     }
 
+    @Throws(InterruptedException::class)
+    @Test
+    fun testAddProductCategory() {
+        // Remove all product categories from the database
+        ProductSqlUtils.deleteAllProductCategories()
+        assertEquals(0, ProductSqlUtils.getProductCategoriesForSite(sSite).size)
+
+        nextEvent = TestEvent.ADDED_PRODUCT_CATEGORY
+        mCountDownLatch = CountDownLatch(1)
+
+        val category = WCProductCategoryModel(1)
+        category.name = "Qwerty"
+        category.slug = "qwerty"
+        mDispatcher.dispatch(
+                WCProductActionBuilder.newAddProductCategoryAction(
+                        AddProductCategoryPayload(sSite, category)
+                ))
+        assertTrue(mCountDownLatch.await(TestUtils.DEFAULT_TIMEOUT_MS.toLong(), MILLISECONDS))
+
+        // Verify results
+        val fetchAllCategories = productStore.getProductCategoriesForSite(sSite)
+        assertEquals(category.name, fetchAllCategories[0].name)
+        assertEquals(category.parent, fetchAllCategories[0].parent)
+        assertEquals(category.slug, fetchAllCategories[0].slug)
+    }
+
     /**
      * Used by the update images test to fetch a single media model for this site
      */
@@ -668,6 +698,10 @@ class ReleaseStack_WCProductTest : ReleaseStack_WCBase() {
         when (event.causeOfChange) {
             WCProductAction.FETCHED_PRODUCT_CATEGORIES -> {
                 assertEquals(TestEvent.FETCHED_PRODUCT_CATEGORIES, nextEvent)
+                mCountDownLatch.countDown()
+            }
+            WCProductAction.ADDED_PRODUCT_CATEGORY -> {
+                assertEquals(TestEvent.ADDED_PRODUCT_CATEGORY, nextEvent)
                 mCountDownLatch.countDown()
             }
             else -> throw AssertionError("Unexpected cause of change: " + event.causeOfChange)

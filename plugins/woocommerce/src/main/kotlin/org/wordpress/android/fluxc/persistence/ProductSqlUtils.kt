@@ -504,6 +504,24 @@ object ProductSqlUtils {
         }
     }
 
+    fun insertOrIgnoreProductCategory(productCategory: WCProductCategoryModel): Int {
+        val result = WellSql.select(WCProductCategoryModel::class.java)
+            .where().beginGroup()
+            .equals(WCProductCategoryModelTable.ID, productCategory.id)
+            .or()
+            .beginGroup()
+            .equals(WCProductCategoryModelTable.LOCAL_SITE_ID, productCategory.localSiteId)
+            .equals(WCProductCategoryModelTable.REMOTE_CATEGORY_ID, productCategory.remoteCategoryId)
+            .endGroup().endGroup().endWhere().asModel
+
+        return if (result.isEmpty()) {
+            WellSql.insert(productCategory).asSingleTransaction(true).execute()
+            1
+        } else {
+            0
+        }
+    }
+
     fun deleteAllProductCategories() = WellSql.delete(WCProductCategoryModel::class.java).execute()
 
     fun getProductCategoryByRemoteId(

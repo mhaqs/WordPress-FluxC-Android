@@ -24,6 +24,7 @@ import org.wordpress.android.fluxc.persistence.SiteSqlUtils
 import org.wordpress.android.fluxc.store.WCProductStore.ProductCategorySorting
 import org.wordpress.android.fluxc.store.WCProductStore.FetchProductReviewsResponsePayload
 import org.wordpress.android.fluxc.store.WCProductStore.ProductErrorType
+import org.wordpress.android.fluxc.store.WCProductStore.RemoteAddProductCategoryResponsePayload
 import org.wordpress.android.fluxc.store.WCProductStore.RemoteProductCategoryListPayload
 import org.wordpress.android.fluxc.store.WCProductStore.RemoteProductListPayload
 import org.wordpress.android.fluxc.store.WCProductStore.RemoteProductPayload
@@ -742,6 +743,41 @@ class MockedStack_WCProductsTest : MockedStack_Base() {
 
         assertEquals(WCProductAction.FETCHED_PRODUCT_CATEGORIES, lastAction!!.type)
         val payload = lastAction!!.payload as RemoteProductCategoryListPayload
+        assertTrue(payload.isError)
+        assertEquals(ProductErrorType.GENERIC_ERROR, payload.error.type)
+    }
+
+    @Test
+    fun testAddProductCategorySuccess() {
+        interceptor.respondWith("wc-add-product-category-success.json")
+        productRestClient.addProductCategory(siteModel, WCProductCategoryModel())
+
+        countDownLatch = CountDownLatch(1)
+        assertTrue(countDownLatch.await(TestUtils.DEFAULT_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS))
+
+        assertEquals(WCProductAction.ADDED_PRODUCT_CATEGORY, lastAction!!.type)
+        val payload = lastAction!!.payload as RemoteAddProductCategoryResponsePayload
+        assertFalse(payload.isError)
+        assertEquals(siteModel.id, payload.site.id)
+        assertEquals(7, payload.site)
+
+        // Save product categories to the database
+        assertEquals(1, ProductSqlUtils.insertOrIgnoreProductCategory(payload.category))
+        assertEquals(
+                1,
+                ProductSqlUtils.getProductCategoriesForSite(siteModel, ProductCategorySorting.NAME_ASC).size)
+    }
+
+    @Test
+    fun testAddProductCategoryFailed() {
+        interceptor.respondWithError("jetpack-tunnel-root-response-failure.json")
+        productRestClient.addProductCategory(siteModel, WCProductCategoryModel())
+
+        countDownLatch = CountDownLatch(1)
+        assertTrue(countDownLatch.await(TestUtils.DEFAULT_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS))
+
+        assertEquals(WCProductAction.ADDED_PRODUCT_CATEGORY, lastAction!!.type)
+        val payload = lastAction!!.payload as RemoteAddProductCategoryResponsePayload
         assertTrue(payload.isError)
         assertEquals(ProductErrorType.GENERIC_ERROR, payload.error.type)
     }

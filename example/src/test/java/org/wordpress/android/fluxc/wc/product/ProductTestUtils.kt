@@ -1,9 +1,11 @@
 package org.wordpress.android.fluxc.wc.product
 
 import com.google.gson.Gson
+import com.google.gson.JsonArray
 import com.google.gson.reflect.TypeToken
 import org.wordpress.android.fluxc.model.WCProductCategoryModel
 import org.wordpress.android.fluxc.model.WCProductModel
+import org.wordpress.android.fluxc.model.WCProductModel.ProductTriplet
 import org.wordpress.android.fluxc.model.WCProductReviewModel
 import org.wordpress.android.fluxc.model.WCProductShippingClassModel
 import org.wordpress.android.fluxc.network.rest.wpcom.wc.product.CoreProductStockStatus
@@ -89,6 +91,43 @@ object ProductTestUtils {
                 slug = it.slug ?: ""
                 parent = it.parent ?: 0L
             }
+        }
+    }
+
+    fun generateTestProductCategoriesListJsonString(): String {
+        val jsonProductCategories = JsonArray()
+        for (triplet in generateTestProductCategoriesList()) {
+            jsonProductCategories.add(triplet.toJson())
+        }
+        return jsonProductCategories.toString()
+    }
+
+    fun generateTestCategoriesList(): List<WCProductCategoryModel> {
+        val categoriesList = ArrayList<WCProductCategoryModel>()
+        with(WCProductCategoryModel(1)) {
+            remoteCategoryId = 1
+            parent = 0L
+            slug = ""
+            name = ""
+            categoriesList.add(this)
+        }
+        with(WCProductCategoryModel(2)) {
+            remoteCategoryId = 2
+            parent = 0L
+            slug = ""
+            name = ""
+            categoriesList.add(this)
+        }
+        return categoriesList
+    }
+
+    fun generateTestProductCategoriesList(): List<ProductTriplet> {
+        return generateTestCategoriesList().map {
+            ProductTriplet(
+                    it.remoteCategoryId,
+                    it.name,
+                    it.slug
+            )
         }
     }
 }
